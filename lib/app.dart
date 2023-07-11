@@ -1,84 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_weather/search/search.dart';
-import 'package:flutter_weather/settings/settings.dart';
 import 'package:flutter_weather/theme/cubit/theme_cubit.dart';
 import 'package:flutter_weather/weather/models/models.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:weather_repository/weather_repository.dart';
+import 'package:flutter_weather/weather_page.dart';
 
-class WeatherPage extends StatelessWidget {
-  const WeatherPage({super.key});
+class WeatherApp extends StatelessWidget {
+  const WeatherApp({required WeatherRepository weatherRepository, super.key})
+      : _weatherRepository = weatherRepository;
+
+  final WeatherRepository _weatherRepository;
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => WeatherCubit(context.read<WeatherRepository>()),
-      child: const WeatherView(),
+    return RepositoryProvider.value(
+      value: _weatherRepository,
+      child: BlocProvider(
+        create: (_) => ThemeCubit(),
+        child: const WeatherAppView(),
+      ),
     );
   }
 }
 
-class WeatherView extends StatefulWidget {
-  const WeatherView({super.key});
+class WeatherAppView extends StatelessWidget {
+  const WeatherAppView({super.key});
 
-  @override
-  State<WeatherView> createState() => _WeatherViewState();
-}
-
-class _WeatherViewState extends State<WeatherView> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flutter Weather'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.of(context).push<void>(
-                SettingsPage.route(
-                  context.read<WeatherCubit>(),
-                ),
-              );
-            },
+    final textTheme = Theme.of(context).textTheme;
+    return BlocBuilder<ThemeCubit, Color>(
+      builder: (context, color) {
+        return MaterialApp(
+          theme: ThemeData(
+            primaryColor: color,
+            textTheme: GoogleFonts.rajdhaniTextTheme(),
+            appBarTheme: AppBarTheme(
+              titleTextStyle: GoogleFonts.rajdhaniTextTheme(textTheme)
+                  .apply(bodyColor: Colors.white)
+                  .titleLarge,
+            ),
           ),
-        ],
-      ),
-      body: Center(
-        child: BlocConsumer<WeatherCubit, WeatherState>(
-          listener: (context, state) {
-            if (state.status.isSuccess) {
-              context.read<ThemeCubit>().updateTheme(state.weather);
-            }
-          },
-          builder: (context, state) {
-            switch (state.status) {
-              case WeatherStatus.initial:
-                return const WeatherEmpty();
-              case WeatherStatus.loading:
-                return const WeatherLoading();
-              case WeatherStatus.success:
-                return WeatherPopulated(
-                  weather: state.weather,
-                  units: state.temperatureUnits,
-                  onRefresh: () {
-                    return context.read<WeatherCubit>().refreshWeather();
-                  },
-                );
-              case WeatherStatus.failure:
-                return const WeatherError();
-            }
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.search, semanticLabel: 'Search'),
-        onPressed: () async {
-          final city = await Navigator.of(context).push(SearchPage.route());
-          if (!mounted) return;
-          await context.read<WeatherCubit>().fetchWeather(city);
-        },
-      ),
+          home: const WeatherPage(),
+        );
+      },
     );
   }
 }
